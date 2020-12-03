@@ -1,0 +1,195 @@
+// ==UserScript==
+// @name        ctrip酒店详情脚本
+// @namespace   https://greasyfork.org/users/14059
+// @description 用浏览器进行爬虫的脚本.自己在var urlList定义爬虫地址列表,然后手动绕过验证码,运行菜单:运行爬虫脚本
+// @include     https://hotels.ctrip.com/hotels/detail/*
+// @author      setycyas
+// @version     0.01
+// @grant       GM_registerMenuCommand
+// @run-at      document-end
+// @license     MIT
+// ==/UserScript==
+
+(function(){
+    	// 常用工具函数
+    var tools = {
+      formatParams: formatParams,
+      ajaxGet: ajaxGet,
+      ajaxPost: ajaxPost
+    }
+    getXCDataInterval()
+
+    function getXCDataInterval() {
+      var isLoading = false
+      var myInter = setInterval(function () {
+        console.log('正在获取数据...')
+        var baseRoomDom = document.getElementById('detail-room-list')
+        if (baseRoomDom) {
+          var hotelItems = baseRoomDom.querySelectorAll('.roomlist-baseroom-card')
+          var soldout = baseRoomDom.querySelectorAll('.roomlist-soldout')
+          // 判断是否无数据, 如果没有数据返回则关闭窗口
+          if(!isLoading) {
+              var loading = baseRoomDom.querySelectorAll('.roomlist-loading')
+              if(loading && loading.length) {
+                  isLoading = true
+              }
+          }
+          if (isLoading && soldout && soldout.length) {
+              console.log('暂无数据')
+              clearInterval(myInter)
+              window.close()
+          }
+          // 判断是否有数据, 如果已经拿到数据则发送至后台并关闭窗口
+          if (hotelItems && hotelItems.length) {
+            // 获取数据日期
+            var date = document.querySelector('.roomsearch-container .focus-input').getAttribute("data-key")
+            var submitData = {
+              date: date,
+              roomData: []
+            }
+            for (var i = 0; i < hotelItems.length; i++) {
+              var subjs = hotelItems[i].querySelectorAll('.ubt-salecard')
+              for (var j = 0; j < subjs.length; j++) {
+                  var policys = subjs[j].querySelectorAll('.policy')
+                  var ctrip = subjs[j].querySelector('.promotion') ? subjs[j].querySelector('.promotion').innerText : ''
+                  var policyArr = []
+                  for (var k = 0; k < policys.length; k++) {
+                      policyArr.push(policys[k].innerText)
+                  }
+                submitData.roomData.push({
+                  roomId: subjs[j].getAttribute("ubt-roomid"),
+                  priceDelete: subjs[j].querySelector('.price .price-delete') ? subjs[j].querySelector('.price .price-delete').innerText : '',
+                  price: subjs[j].querySelector('.price .price-display').innerText,
+                  promotion: policyArr.join(',') + (ctrip ? ( ',' + ctrip): '' ),
+                  baseRoomId: subjs[j].getAttribute("ubt-baseroomid"),
+                  roomhold: subjs[j].querySelector('.roomhold') ? subjs[j].querySelector('.roomhold').innerText : undefined
+                })
+              }
+            }
+            clearInterval(myInter)
+            console.log('获取完成', submitData)
+              console.log(tools.ajaxGet)
+            // 发送数据到服务器
+            tools.ajaxPost('http://193.112.143.125:10000/hotel/result', {
+              date: submitData.date,
+              roomData: JSON.stringify(submitData.roomData)
+            }, function(res){
+              console.log('返回的数据:',res)
+              // 关闭浏览器窗口
+              window.close()
+            }, undefined, false)
+          }
+        }
+      }, 300);
+    }
+
+    /* ajax请求get
+     * @param url     string   请求的路径
+     * @param query   object   请求的参数query
+     * @param succCb  function 请求成功之后的回调
+     * @param failCb  function 请求失败的回调
+     * @param isJson  boolean  true： 解析json  false：文本请求  默认值true
+     */
+    function ajaxGet(url, query, succCb, failCb, isJson) {
+      // 拼接url加query
+      if (query) {
+        var parms = tools.formatParams(query);
+        url += '?' + parms;
+        // console.log('-------------',url);
+      }
+        console.log(url, query, succCb, failCb, isJson)
+
+      // 1、创建对象
+      var ajax = new XMLHttpRequest();
+      // 2、建立连接
+      // true:请求为异步  false:同步
+      ajax.open("GET", url, true);
+      // ajax.setRequestHeader("Origin",STATIC_PATH);
+
+      // ajax.setRequestHeader("Access-Control-Allow-Origin","*");
+      // // 响应类型
+      // ajax.setRequestHeader('Access-Control-Allow-Methods', '*');
+      // // 响应头设置
+      // ajax.setRequestHeader('Access-Control-Allow-Headers', 'x-requested-with,content-type');
+      // ajax.withCredentials = true;
+      // 3、发送请求
+      ajax.send(null);
+
+      // 4、监听状态的改变
+      ajax.onreadystatechange = function () {
+        if (ajax.readyState === 4) {
+          if (ajax.status === 200) {
+            // 用户传了回调才执行
+            // isJson默认值为true，要解析json
+            if (isJson === undefined) {
+              isJson = true;
+            }
+            var res = isJson ? JSON.parse(ajax.responseText == "" ? '{}' : ajax.responseText) : ajax.responseText;
+            succCb && succCb(res);
+          } else {
+            // 请求失败
+            failCb && failCb();
+          }
+        }
+      }
+    }
+
+    /* ajax请求post
+     * @param url     string   请求的路径
+     * @param data   object   请求的参数query
+     * @param succCb  function 请求成功之后的回调
+     * @param failCb  function 请求失败的回调
+     * @param isJson  boolean  true： 解析json  false：文本请求  默认值true
+     */
+    function ajaxPost(url, data, succCb, failCb, isJson) {
+
+      var formData = new FormData();
+      for (var i in data) {
+        formData.append(i, data[i]);
+      }
+      //得到xhr对象
+      var xhr = null;
+      if (XMLHttpRequest) {
+        xhr = new XMLHttpRequest();
+      } else {
+        xhr = new ActiveXObject("Microsoft.XMLHTTP");
+
+      }
+
+      xhr.open("post", url, true);
+      // 设置请求头  需在open后send前
+      // 这里的CSRF需自己取后端获取，下面给出获取代码
+      // xhr.setRequestHeader("X-CSRFToken", CSRF);
+
+      xhr.send(formData);
+
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            // 判断isJson是否传进来了
+            isJson = isJson === undefined ? true : isJson;
+            succCb && succCb(isJson ? JSON.parse(xhr.responseText) : xhr.responseText);
+          }
+        }
+      }
+    }
+
+    /* 将对象转换成url形式参数 */
+    function formatParams (data) {
+      var _result = [];
+      for (var key in data) {
+        var value = data[key];
+        if (value.constructor == Array) {
+          value.forEach(function(_value) {
+            _result.push(key + "=" + _value);
+          });
+        } else {
+          _result.push(key + '=' + value);
+        }
+      }
+      return _result.join('&');
+    }
+  function main(){
+  }
+/* 脚本结束 */
+})();

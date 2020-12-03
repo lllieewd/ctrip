@@ -1,0 +1,174 @@
+// ==UserScript==
+// @name        ctrip酒店获取打开脚本
+// @namespace   https://greasyfork.org/users/14059
+// @description 用浏览器进行爬虫的脚本.自己在var urlList定义爬虫地址列表,然后手动绕过验证码,运行菜单:运行爬虫脚本
+// @include     https://hotels.ctrip.com/*
+// @author      setycyas
+// @version     0.01
+// @grant       GM_registerMenuCommand
+// @run-at      document-end
+// @license     MIT
+// ==/UserScript==
+
+(function(){
+  /* 脚本正式开始 */
+
+  'use strict';
+  console.log("浏览器爬虫脚本运行开始!");
+
+  /****************************************
+  ######## version 2019-03-13 ###########
+  ######## 脚本正式开始 ###################
+  ****************************************/
+// 常用工具函数
+    var tools = {
+      formatParams: formatParams,
+      ajaxGet: ajaxGet,
+      ajaxPost: ajaxPost
+    }
+
+    /* ajax请求get
+     * @param url     string   请求的路径
+     * @param query   object   请求的参数query
+     * @param succCb  function 请求成功之后的回调
+     * @param failCb  function 请求失败的回调
+     * @param isJson  boolean  true： 解析json  false：文本请求  默认值true
+     */
+    function ajaxGet(url, query, succCb, failCb, isJson) {
+      // 拼接url加query
+      if (query) {
+        var parms = tools.formatParams(query);
+        url += '?' + parms;
+        // console.log('-------------',url);
+      }
+       // console.log(url, query, succCb, failCb, isJson)
+
+      // 1、创建对象
+      var ajax = new XMLHttpRequest();
+      // 2、建立连接
+      // true:请求为异步  false:同步
+      ajax.open("GET", url, true);
+      // ajax.setRequestHeader("Origin",STATIC_PATH);
+
+      // ajax.setRequestHeader("Access-Control-Allow-Origin","*");
+      // // 响应类型
+      // ajax.setRequestHeader('Access-Control-Allow-Methods', '*');
+      // // 响应头设置
+      // ajax.setRequestHeader('Access-Control-Allow-Headers', 'x-requested-with,content-type');
+      // ajax.withCredentials = true;
+      // 3、发送请求
+      ajax.send(null);
+
+      // 4、监听状态的改变
+      ajax.onreadystatechange = function () {
+        if (ajax.readyState === 4) {
+          if (ajax.status === 200) {
+            // 用户传了回调才执行
+            // isJson默认值为true，要解析json
+            if (isJson === undefined) {
+              isJson = true;
+            }
+            var res = isJson ? JSON.parse(ajax.responseText == "" ? '{}' : ajax.responseText) : ajax.responseText;
+            succCb && succCb(res);
+          } else {
+            // 请求失败
+            failCb && failCb();
+          }
+        }
+      }
+    }
+
+    /* ajax请求post
+     * @param url     string   请求的路径
+     * @param data   object   请求的参数query
+     * @param succCb  function 请求成功之后的回调
+     * @param failCb  function 请求失败的回调
+     * @param isJson  boolean  true： 解析json  false：文本请求  默认值true
+     */
+    function ajaxPost(url, data, succCb, failCb, isJson) {
+
+      var formData = new FormData();
+      for (var i in data) {
+        formData.append(i, data[i]);
+      }
+      //得到xhr对象
+      var xhr = null;
+      if (XMLHttpRequest) {
+        xhr = new XMLHttpRequest();
+      } else {
+        xhr = new ActiveXObject("Microsoft.XMLHTTP");
+
+      }
+
+      xhr.open("post", url, true);
+      // 设置请求头  需在open后send前
+      // 这里的CSRF需自己取后端获取，下面给出获取代码
+      // xhr.setRequestHeader("X-CSRFToken", CSRF);
+
+      xhr.send(formData);
+
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            // 判断isJson是否传进来了
+            isJson = isJson === undefined ? true : isJson;
+            succCb && succCb(isJson ? JSON.parse(xhr.responseText) : xhr.responseText);
+          }
+        }
+      }
+    }
+
+    /* 将对象转换成url形式参数 */
+    function formatParams (data) {
+      var _result = [];
+      for (var key in data) {
+        var value = data[key];
+        if (value.constructor == Array) {
+          value.forEach(function(_value) {
+            _result.push(key + "=" + _value);
+          });
+        } else {
+          _result.push(key + '=' + value);
+        }
+      }
+      return _result.join('&');
+    }
+  
+  // 主函数
+  function main(){
+      console.log('任务开始');
+      var test2 = setInterval(function(){
+           tools.ajaxGet('http://193.112.143.125:10000/hotel/getUrl', undefined, function(res){
+               if(res != '') {
+                   //console.log(res);
+                   window.open(res);
+               } else {
+                   console.log('任务结束');
+                   console.log(new Date());
+                   clearInterval(test2)
+               }
+           }, undefined, false)
+      },20000)
+
+    //addDiv();
+   
+  }
+
+  function clearAllCookie() {
+      var date=new Date();
+      date.setTime(date.getTime()-10000);
+      var keys=document.cookie.match(/[^ =;]+(?=\=)/g);
+      //console.log("需要删除的cookie名字："+keys);
+      if (keys) {
+          for (var i = keys.length; i--;) {
+              document.cookie=keys[i]+"=0; expire="+date.toGMTString()+"; path=/";
+          }
+      }
+  }
+
+  
+  /* Main Script */
+  GM_registerMenuCommand('运行爬虫脚本',main);
+
+/* 脚本结束 */
+})();

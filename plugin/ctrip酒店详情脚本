@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name        ctrip酒店详情脚本
-// @namespace   https://greasyfork.org/users/14059
-// @description 用浏览器进行爬虫的脚本.自己在var urlList定义爬虫地址列表,然后手动绕过验证码,运行菜单:运行爬虫脚本
+// @namespace   
+// @description 获取数据后关闭浏览器
 // @include     https://hotels.ctrip.com/hotels/detail/*
-// @author      setycyas
+// @author      
 // @version     0.01
 // @grant       GM_registerMenuCommand
 // @run-at      document-end
@@ -70,7 +70,7 @@
             console.log('获取完成', submitData)
               console.log(tools.ajaxGet)
             // 发送数据到服务器
-            tools.ajaxPost('http://193.112.143.125:10000/hotel/result', {
+            tools.ajaxPost('http://193.***.***.***:10000/hotel/result', {
               date: submitData.date,
               roomData: JSON.stringify(submitData.roomData)
             }, function(res){

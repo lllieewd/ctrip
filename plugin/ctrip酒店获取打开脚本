@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name        ctrip酒店获取打开脚本
-// @namespace   https://greasyfork.org/users/14059
-// @description 用浏览器进行爬虫的脚本.自己在var urlList定义爬虫地址列表,然后手动绕过验证码,运行菜单:运行爬虫脚本
+// @namespace   
+// @description 用浏览器进行爬虫的脚本.
 // @include     https://hotels.ctrip.com/*
-// @author      setycyas
+// @author      
 // @version     0.01
 // @grant       GM_registerMenuCommand
 // @run-at      document-end
@@ -118,7 +118,7 @@
       }
     }
 
-    /* 将对象转换成url形式参数 */
+    /* 将对象转换成url形式参数 */			
     function formatParams (data) {
       var _result = [];
       for (var key in data) {
@@ -138,7 +138,7 @@
   function main(){
       console.log('任务开始');
       var test2 = setInterval(function(){
-           tools.ajaxGet('http://193.112.143.125:10000/hotel/getUrl', undefined, function(res){
+           tools.ajaxGet('http://193.****.***.***:10000/hotel/getUrl', undefined, function(res){
                if(res != '') {
                    //console.log(res);
                    window.open(res);
